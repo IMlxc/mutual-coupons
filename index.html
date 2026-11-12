@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>互赠券</title>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Microsoft YaHei", sans-serif;
+      background:
+        linear-gradient(135deg, #fff1f5 0%, #f3f6ff 100%);
+      color: #202124;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .container {
+      width: min(900px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 60px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 38px;
+      letter-spacing: 2px;
+    }
+
+    .hero p {
+      color: #777;
+      margin: 10px 0 0;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 22px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 12px 36px rgba(46, 53, 83, 0.1);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #444;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #e1e3eb;
+      border-radius: 12px;
+      padding: 13px 14px;
+      outline: none;
+      background: #fff;
+      transition: 0.2s;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #7776e8;
+      box-shadow: 0 0 0 4px rgba(119, 118, 232, 0.12);
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .primary {
+      background: #6c63e8;
+      color: white;
+      border-radius: 12px;
+      padding: 12px 18px;
+    }
+
+    .primary:hover {
+      background: #574fd0;
+    }
+
+    .secondary {
+      background: #f0f1f8;
+      color: #4a4b59;
+      border-radius: 12px;
+      padding: 12px 18px;
+    }
+
+    .danger {
+      background: #ff6d7d;
+      color: white;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    .danger:disabled {
+      background: #c9cbd4;
+      cursor: not-allowed;
+    }
+
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .room-code {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #f1efff;
+      color: #5149bd;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .status {
+      color: #777;
+      font-size: 14px;
+    }
+
+    .status.online {
+      color: #16a05d;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 28px 0 14px;
+    }
+
+    .coupon-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .coupon {
+      border: 1px solid #ececf3;
+      border-radius: 16px;
+      padding: 18px;
+      background: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .coupon.used {
+      opacity: 0.62;
+      background: #f8f8fa;
+    }
+
+    .coupon.used::before {
+      content: "已使用";
+      position: absolute;
+      top: 14px;
+      right: -31px;
+      transform: rotate(35deg);
+      background: #9294a4;
+      color: white;
+      padding: 5px 34px;
+      font-size: 12px;
+    }
+
+    .coupon-title {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-right: 60px;
+    }
+
+    .coupon-note {
+      color: #666;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      margin-bottom: 12px;
+    }
+
+    .coupon-meta {
+      color: #999;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .empty {
+      text-align: center;
+      color: #999;
+      padding: 32px 0;
+    }
+
+    .hint {
+      background: #fff9e8;
+      color: #8d6c1d;
+      border-radius: 12px;
+      padding: 12px 14px;
+      line-height: 1.6;
+      font-size: 14px;
+      margin-top: 14px;
+    }
+
+    .share-link {
+      word-break: break-all;
+      color: #666;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      background: rgba(30, 31, 40, 0.92);
+      color: white;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 14px;
+      z-index: 99;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width: min(100% - 22px, 900px);
+        padding-top: 24px;
+      }
+
+      .hero h1 {
+        font-size: 30px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>互赠券</h1>
+      <p>送给对方一件小事，一起兑现生活里的小约定</p>
+    </section>
+
+    <section id="welcomeCard" class="card">
+      <div class="form-group">
+        <label for="userName">你的昵称</label>
+        <input id="userName" placeholder="例如：小明" maxlength="20" />
+      </div>
+
+      <div class="button-row">
+        <button id="createRoomBtn" class="primary">创建房间</button>
+      </div>
+
+      <div style="height: 20px"></div>
+
+      <div class="form-group">
+        <label for="joinCode">已有房间码</label>
+        <input id="joinCode" placeholder="输入 6 位房间码" maxlength="6" />
+      </div>
+
+      <div class="button-row">
+        <button id="joinRoomBtn" class="secondary">加入房间</button>
+      </div>
+
+      <div class="hint">
+        创建房间后，把房间码或分享链接发给另一个用户。
+      </div>
+    </section>
+
+    <section id="roomCard" class="hidden">
+      <div class="card">
+        <div class="room-header">
+          <div>
+            <div style="font-size: 14px; color: #888; margin-bottom: 8px;">
+              当前房间
+            </div>
+
+            <div class="room-code">
+              <span id="roomCodeText"></span>
+              <button id="copyCodeBtn" class="secondary" style="padding: 6px 9px;">
+                复制
+              </button>
+            </div>
+          </div>
+
+          <div id="connectionStatus" class="status">
+            正在连接……
+          </div>
+        </div>
+
+        <div id="shareLink" class="share-link"></div>
+
+        <div class="hint">
+          创建房间的人需要保持此页面打开。两个人都进入房间后，券的状态会实时同步。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">赠送一张券</div>
+
+        <div class="form-group">
+          <label for="couponTitle">券名称</label>
+          <input id="couponTitle" placeholder="例如：请你吃一顿饭" maxlength="50" />
+        </div>
+
+        <div class="form-group">
+          <label for="couponNote">券说明</label>
+          <textarea id="couponNote" placeholder="例如：周末任选一家餐厅"></textarea>
+        </div>
+
+        <button id="sendCouponBtn" class="primary">
+          赠送给对方
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="section-title">券列表</div>
+        <div id="couponList" class="coupon-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const state = {
+      peer: null,
+      connection: null,
+      isHost: false,
+      roomCode: "",
+      userName: "",
+      coupons: [],
+      partnerConnected: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function showToast(message) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2200);
+    }
+
+    function createRoomCode() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+
+      for (let i = 0; i < 6; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+      }
+
+      return code;
+    }
+
+    function getStorageKey() {
+      return `coupon-room-${state.roomCode}`;
+    }
+
+    function loadLocalCoupons() {
+      try {
+        const saved = localStorage.getItem(getStorageKey());
+        state.coupons = saved ? JSON.parse(saved) : [];
+      } catch {
+        state.coupons = [];
+      }
+    }
+
+    function saveLocalCoupons() {
+      localStorage.setItem(
+        getStorageKey(),
+        JSON.stringify(state.coupons)
+      );
+    }
+
+    function setRoomVisible() {
+      $("welcomeCard").classList.add("hidden");
+      $("roomCard").classList.remove("hidden");
+
+      $("roomCodeText").textContent = state.roomCode;
+      $("shareLink").textContent =
+        `${location.origin}${location.pathname}?room=${state.roomCode}`;
+    }
+
+    function setConnectionStatus(text, online = false) {
+      const el = $("connectionStatus");
+      el.textContent = text;
+      el.classList.toggle("online", online);
+    }
+
+    function renderCoupons() {
+      const list = $("couponList");
+
+      if (!state.coupons.length) {
+        list.innerHTML = `<div class="empty">还没有券，送出第一张吧</div>`;
+        return;
+      }
+
+      const sorted = [...state.coupons].sort(
+        (a, b) => b.createdAt - a.createdAt
+      );
+
+      list.innerHTML = sorted.map((coupon) => {
+        const isMine = coupon.fromName === state.userName;
+        const used = coupon.status === "used";
+
+        return `
+          <article class="coupon ${used ? "used" : ""}">
+            <div class="coupon-title">${escapeHtml(coupon.title)}</div>
+
+            ${
+              coupon.note
+                ? `<div class="coupon-note">${escapeHtml(coupon.note)}</div>`
+                : ""
+            }
+
+            <div class="coupon-meta">
+              ${isMine ? "我赠送的" : "对方赠送的"}
+              · ${escapeHtml(coupon.fromName)}
+              · ${formatTime(coupon.createdAt)}
+            </div>
+
+            <button
+              class="danger"
+              data-id="${coupon.id}"
+              ${used ? "disabled" : ""}
+            >
+              ${used ? "已使用" : "使用一次"}
+            </button>
+          </article>
+        `;
+      }).join("");
+
+      list.querySelectorAll("button[data-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          useCoupon(button.dataset.id);
+        });
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatTime(timestamp) {
+      return new Date(timestamp).toLocaleString("zh-CN", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function broadcastState() {
+      if (state.connection && state.connection.open) {
+        state.connection.send({
+          type: "state",
+          coupons: state.coupons
+        });
+      }
+
+      saveLocalCoupons();
+      renderCoupons();
+    }
+
+    function applyState(coupons) {
+      state.coupons = Array.isArray(coupons) ? coupons : [];
+      saveLocalCoupons();
+      renderCoupons();
+    }
+
+    function hostApplyAction(action) {
+      if (action.type === "create") {
+        const title = String(action.title || "").trim();
+        const note = String(action.note || "").trim();
+
+        if (!title) return;
+
+        state.coupons.push({
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          title,
+          note,
+          fromName: action.fromName,
+          status: "active",
+          usedBy: "",
+          createdAt: Date.now(),
+          usedAt: null
+        });
+
+        broadcastState();
+        return;
+      }
+
+      if (action.type === "use") {
+        const coupon = state.coupons.find(
+          item => item.id === action.id
+        );
+
+        if (!coupon || coupon.status === "used") {
+          return;
+        }
+
+        coupon.status = "used";
+        coupon.usedBy = action.usedBy;
+        coupon.usedAt = Date.now();
+
+        broadcastState();
+      }
+    }
+
+    function connectAsHost() {
+      const peerId = `coupon-${state.roomCode}`;
+
+      state.peer = new Peer(peerId);
+
+      state.peer.on("open", () => {
+        setConnectionStatus("等待另一位用户加入", false);
+      });
+
+      state.peer.on("connection", (connection) => {
+        state.connection = connection;
+
+        connection.on("open", () => {
+          state.partnerConnected = true;
+          setConnectionStatus("两人已连接", true);
+
+          connection.send({
+            type: "state",
+            coupons: state.coupons
+          });
+        });
+
+        connection.on("data", (message) => {
+          if (!message) return;
+
+          if (message.type === "hello") {
+            state.partnerConnected = true;
+            setConnectionStatus(
+              `${message.name || "对方"} 已加入`,
+              true
+            );
+
+            connection.send({
+              type: "state",
+              coupons: state.coupons
+            });
+
+            return;
+          }
+
+          if (message.type === "action") {
+            hostApplyAction(message.action);
+          }
+        });
+
+        connection.on("close", () => {
+          state.partnerConnected = false;
+          setConnectionStatus("对方已离开，等待重新连接", false);
+        });
+      });
+
+      state.peer.on("error", (error) => {
+        console.error(error);
+        setConnectionStatus("连接失败，请重新创建房间", false);
+      });
+    }
+
+    function connectAsGuest() {
+      const hostPeerId = `coupon-${state.roomCode}`;
+
+      state.peer = new Peer();
+
+      state.peer.on("open", () => {
+        const connection = state.peer.connect(hostPeerId);
+        state.connection = connection;
+
+        connection.on("open", () => {
+          setConnectionStatus("两人已连接", true);
+
+          connection.send({
+            type: "hello",
+            name: state.userName
+          });
+        });
+
+        connection.on("data", (message) => {
+          if (message && message.type === "state") {
+            applyState(message.coupons);
+            setConnectionStatus("两人已连接", true);
+          }
+        });
+
+        connection.on("close", () => {
+          setConnectionStatus("连接已断开", false);
+        });
+      });
+
+      state.peer.on("error", () => {
+        setConnectionStatus(
+          "加入失败，请确认房间码正确且房主页面已打开",
+          false
+        );
+      });
+    }
+
+    function createRoom() {
+      const name = $("userName").value.trim();
+
+      if (!name) {
+        showToast("请先输入昵称");
+        return;
+      }
+
+      state.userName = name;
+      state.roomCode = createRoomCode();
+      state.isHost = true;
+
+      loadLocalCoupons();
+      setRoomVisible();
+      renderCoupons();
+      connectAsHost();
+
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}?room=${state.roomCode}`
+      );
+    }
+
+    function joinRoom() {
+      const name = $("userName").value.trim();
+      const code = $("joinCode").value.trim().toUpperCase();
+
+      if (!name) {
+        showToast("请先输入昵称");
+        return;
+      }
+
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        showToast("请输入 6 位房间码");
+        return;
+      }
+
+      state.userName = name;
+      state.roomCode = code;
+      state.isHost = false;
+
+      loadLocalCoupons();
+      setRoomVisible();
+      renderCoupons();
+      connectAsGuest();
+
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}?room=${state.roomCode}`
+      );
+    }
+
+    function sendAction(action) {
+      if (state.isHost) {
+        hostApplyAction(action);
+        return;
+      }
+
+      if (!state.connection || !state.connection.open) {
+        showToast("还没有连接到房主");
+        return;
+      }
+
+      state.connection.send({
+        type: "action",
+        action
+      });
+    }
+
+    function sendCoupon() {
+      const title = $("couponTitle").value.trim();
+      const note = $("couponNote").value.trim();
+
+      if (!title) {
+        showToast("请输入券名称");
+        return;
+      }
+
+      sendAction({
+        type: "create",
+        title,
+        note,
+        fromName: state.userName
+      });
+
+      $("couponTitle").value = "";
+      $("couponNote").value = "";
+      showToast("赠送成功");
+    }
+
+    function useCoupon(id) {
+      const coupon = state.coupons.find(item => item.id === id);
+
+      if (!coupon || coupon.status === "used") {
+        return;
+      }
+
+      const confirmed = confirm(
+        "这张券只能使用一次，确定现在使用吗？"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      sendAction({
+        type: "use",
+        id,
+        usedBy: state.userName
+      });
+
+      showToast("已使用");
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("已复制");
+      } catch {
+        showToast("复制失败，请手动复制");
+      }
+    }
+
+    $("createRoomBtn").addEventListener("click", createRoom);
+    $("joinRoomBtn").addEventListener("click", joinRoom);
+    $("sendCouponBtn").addEventListener("click", sendCoupon);
+
+    $("copyCodeBtn").addEventListener("click", () => {
+      copyText(state.roomCode);
+    });
+
+    const roomFromUrl = new URLSearchParams(
+      location.search
+    ).get("room");
+
+    if (roomFromUrl) {
+      $("joinCode").value = roomFromUrl.toUpperCase();
+    }
+  </script>
+</body>
+</html>
